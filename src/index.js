@@ -4,6 +4,7 @@ import { Modal, View, ListView, TouchableOpacity, Text, TextInput } from 'react-
 
 
 import styles from './styles'
+//Test
 
 
 export default class ModalFilterPicker extends Component {
