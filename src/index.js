@@ -2,21 +2,18 @@ import React, { Component } from 'react'
 import PropTypes from 'prop-types'
 import { Modal, View, ListView, TouchableOpacity, Text, TextInput } from 'react-native'
 
-
 import styles from './styles'
-//Test
-
 
 export default class ModalFilterPicker extends Component {
   constructor (props, ctx) {
-    super(props, ctx)
+    super(props, ctx);
 
     this.state = {
       filter: '',
       ds: new ListView.DataSource({
         rowHasChanged: (r1, r2) => r1.key !== r2.key
       }).cloneWithRows(props.options)
-    }
+    };
   }
 
   componentWillReceiveProps (newProps) {
@@ -24,7 +21,7 @@ export default class ModalFilterPicker extends Component {
       this.setState({
         filter: '',
         ds: this.state.ds.cloneWithRows(newProps.options),
-      })
+      });
     }
   }
 
@@ -38,14 +35,14 @@ export default class ModalFilterPicker extends Component {
       renderCancelButton,
       visible,
       modal,
-    } = this.props
+    } = this.props;
 
     const renderedTitle = (!title) ? null : (
       <Text style={titleTextStyle || styles.titleTextStyle}>{title}</Text>
     )
 
     return (
-      <Modal {...modal} visible={visible} supportedOrientations={['portrait', 'landscape']}>
+      <Modal {...modal} onRequestClose={() => {}} visible={visible} supportedOrientations={['portrait', 'landscape']}>
         <View style={overlayStyle || styles.overlay}>
           {renderedTitle}
           {(renderList || this.renderList)()}
@@ -148,7 +145,7 @@ export default class ModalFilterPicker extends Component {
       return (
         <TouchableOpacity activeOpacity={0.7}
           style={style}
-          onPress={() => this.props.onSelect(key)}
+          onPress={() => this.props.onSelect(rowData)}
         >
           <Text style={textStyle}>{label}</Text>
         </TouchableOpacity>
@@ -173,7 +170,7 @@ export default class ModalFilterPicker extends Component {
     )
   }
 
-  onFilterChange = (text) => {
+  _onFilterChange = (text) => {
     const { options } = this.props
 
     const filter = text.toLowerCase()
@@ -191,9 +188,52 @@ export default class ModalFilterPicker extends Component {
       ds: this.state.ds.cloneWithRows(filtered)
     })
   }
+
+  //@2018-03-04 : Support Autocomplate.
+  //@PARAM: query input text 
+  onFilterChange = (text) => {
+    const params = { "params.query":text };
+    OLI.Fetch
+    .post(this.props.url, params , { showLoading: false })
+    .then(result => {
+      const { data, errMessage , status } = result;
+      if (status >= 400) {
+        throw `Error::: status:${status} errMessage:${errMessage}`;
+      }
+      return data;
+    })
+    .then((data) => {
+      // console.log(">>>> " ,data.list);
+      // console.log("onFilterChange:::text:::" , text)
+      // console.log("onFilterChange:::options:::" , data.list)
+      return data.list || [];
+    })
+    .then((options) => {
+      const filter = text.toLowerCase();
+      // console.log("onFilterChange:::filter:::" , filter)
+      // console.log("onFilterChange:::options_new:::" , options)
+      // apply filter to incoming data
+      const filtered = (!filter.length)
+        ? options
+        : options.filter(({ searchKey, label, key }) => (
+          0 <= label.toLowerCase().indexOf(filter) ||
+            (searchKey && 0 <= searchKey.toLowerCase().indexOf(filter))
+        ))
+      this.setState({
+        filter: text.toLowerCase(),
+        ds: this.state.ds.cloneWithRows(filtered)
+      })
+    })
+    .catch((error) => {
+      OLI.Utils.hideLoading();
+      console.error("ERROR:::onFilterChange() => ", error.message, error);
+    });
+  }
 }
 
+
 ModalFilterPicker.propTypes = {
+  url: PropTypes.string.isRequired,
   options: PropTypes.array.isRequired,
   onSelect: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
@@ -224,11 +264,11 @@ ModalFilterPicker.propTypes = {
 }
 
 ModalFilterPicker.defaultProps = {
-  placeholderText: 'Filter...',
-  placeholderTextColor: '#ccc',
+  placeholderText: 'ค้นหา...',
+  placeholderTextColor: '#00b5cb',
   androidUnderlineColor: 'rgba(0,0,0,0)',
-  cancelButtonText: 'Cancel',
-  noResultsText: 'No matches',
+  cancelButtonText: 'ปิด',
+  noResultsText: 'ไม่พบข้อมูล',
   visible: true,
   showFilter: true,
 }
